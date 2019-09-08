@@ -86,7 +86,6 @@ type ColumnInfo struct {
 	Offset              int                 `json:"offset"`
 	OriginDefaultValue  interface{}         `json:"origin_default"`
 	DefaultValue        interface{}         `json:"default"`
-	DefaultValueBit     []byte              `json:"default_bit"`
 	GeneratedExprString string              `json:"generated_expr_string"`
 	GeneratedStored     bool                `json:"generated_stored"`
 	Dependences         map[string]struct{} `json:"dependences"`
@@ -115,19 +114,6 @@ func (c *ColumnInfo) IsGenerated() bool {
 // SetDefaultValue sets the default value.
 func (c *ColumnInfo) SetDefaultValue(value interface{}) error {
 	c.DefaultValue = value
-	if c.Tp == mysql.TypeBit {
-		// For mysql.TypeBit type, the default value storage format must be a string.
-		// Other value such as int must convert to string format first.
-		// The mysql.TypeBit type supports the null default value.
-		if value == nil {
-			return nil
-		}
-		if v, ok := value.(string); ok {
-			c.DefaultValueBit = []byte(v)
-			return nil
-		}
-		return types.ErrInvalidDefault.GenWithStackByArgs(c.Name)
-	}
 	return nil
 }
 
@@ -135,9 +121,6 @@ func (c *ColumnInfo) SetDefaultValue(value interface{}) error {
 // Default value use to stored in DefaultValue field, but now,
 // bit type default value will store in DefaultValueBit for fix bit default value decode/encode bug.
 func (c *ColumnInfo) GetDefaultValue() interface{} {
-	if c.Tp == mysql.TypeBit && c.DefaultValueBit != nil {
-		return string(c.DefaultValueBit)
-	}
 	return c.DefaultValue
 }
 
