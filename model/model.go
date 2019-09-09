@@ -127,6 +127,11 @@ func (c *ColumnInfo) GetDefaultValue() string {
 	return string(c.DefaultValue)
 }
 
+// DefaultValueIsEmpty indicates true if there is a default value in ColumnInfo.
+func (c *ColumnInfo) DefaultValueIsEmpty() bool {
+	return c.DefaultValue == nil
+}
+
 // FindColumnInfo finds ColumnInfo in cols by name.
 func FindColumnInfo(cols []*ColumnInfo, name string) *ColumnInfo {
 	name = strings.ToLower(name)
