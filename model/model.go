@@ -75,8 +75,11 @@ const (
 	// This is not compatibility for user. Then we try to fix this in PR #9820, and increase the version number.
 	ColumnInfoVersion2 = uint64(2)
 
+	// ColumnInfoVersion2 means the column info version is 3.
+	// This version removed the `DefaultValueBit` field, and it replaced the default value with []byte.
+	ColumnInfoVersion3 = uint64(3)
 	// CurrLatestColumnInfoVersion means the latest column info in the current TiDB.
-	CurrLatestColumnInfoVersion = ColumnInfoVersion2
+	CurrLatestColumnInfoVersion = ColumnInfoVersion3
 )
 
 // ColumnInfo provides meta data describing of a table column.
@@ -84,9 +87,8 @@ type ColumnInfo struct {
 	ID                  int64               `json:"id"`
 	Name                CIStr               `json:"name"`
 	Offset              int                 `json:"offset"`
-	OriginDefaultValue  interface{}         `json:"origin_default"`
-	DefaultValue        interface{}         `json:"default"`
-	DefaultValueBit     []byte              `json:"default_bit"`
+	OriginDefaultValue  []byte              `json:"origin_default"`
+	DefaultValue        []byte              `json:"default"`
 	GeneratedExprString string              `json:"generated_expr_string"`
 	GeneratedStored     bool                `json:"generated_stored"`
 	Dependences         map[string]struct{} `json:"dependences"`
@@ -113,31 +115,15 @@ func (c *ColumnInfo) IsGenerated() bool {
 }
 
 // SetDefaultValue sets the default value.
-func (c *ColumnInfo) SetDefaultValue(value interface{}) error {
+func (c *ColumnInfo) SetDefaultValue(value []byte) error {
 	c.DefaultValue = value
-	if c.Tp == mysql.TypeBit {
-		// For mysql.TypeBit type, the default value storage format must be a string.
-		// Other value such as int must convert to string format first.
-		// The mysql.TypeBit type supports the null default value.
-		if value == nil {
-			return nil
-		}
-		if v, ok := value.(string); ok {
-			c.DefaultValueBit = []byte(v)
-			return nil
-		}
-		return types.ErrInvalidDefault.GenWithStackByArgs(c.Name)
-	}
 	return nil
 }
 
 // GetDefaultValue gets the default value of the column.
 // Default value use to stored in DefaultValue field, but now,
 // bit type default value will store in DefaultValueBit for fix bit default value decode/encode bug.
-func (c *ColumnInfo) GetDefaultValue() interface{} {
-	if c.Tp == mysql.TypeBit && c.DefaultValueBit != nil {
-		return string(c.DefaultValueBit)
-	}
+func (c *ColumnInfo) GetDefaultValue() []byte {
 	return c.DefaultValue
 }
 

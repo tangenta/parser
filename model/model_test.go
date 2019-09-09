@@ -46,7 +46,7 @@ func (*testModelSuite) TestModelBasic(c *C) {
 		ID:           1,
 		Name:         NewCIStr("c"),
 		Offset:       0,
-		DefaultValue: 0,
+		DefaultValue: []byte{0},
 		FieldType:    *types.NewFieldType(0),
 	}
 	column.Flag |= mysql.PriKeyFlag
