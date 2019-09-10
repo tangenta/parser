@@ -103,6 +103,82 @@ type ColumnInfo struct {
 	Version uint64 `json:"version"`
 }
 
+func (c *ColumnInfo) UnmarshalJSON(data []byte) error {
+	var m map[string]interface{}
+	if err := json.Unmarshal(data, &m); err != nil {
+		return errors.Trace(err)
+	}
+	vStrInt, ok := m["version"]
+	if !ok {
+		return errors.Trace(errors.New("ColumnInfo does not contain version"))
+	}
+	vStr, ok := vStrInt.(string)
+	if !ok {
+		return errors.Trace(errors.New("ColumnInfo does not contain version"))
+	}
+	columnInfoVersionNum, err := strconv.ParseUint(vStr, 10, 64)
+	if err != nil {
+		return errors.Trace(err)
+	}
+
+	if columnInfoVersionNum < ColumnInfoVersion3 {
+		type OldColumnInfo struct {
+			ID                  int64               `json:"id"`
+			Name                CIStr               `json:"name"`
+			Offset              int                 `json:"offset"`
+			OriginDefaultValue  interface{}         `json:"origin_default"`
+			DefaultValue        interface{}         `json:"default"`
+			GeneratedExprString string              `json:"generated_expr_string"`
+			GeneratedStored     bool                `json:"generated_stored"`
+			Dependences         map[string]struct{} `json:"dependences"`
+			types.FieldType     `json:"type"`
+			State               SchemaState `json:"state"`
+			Comment             string      `json:"comment"`
+			Version             uint64      `json:"version"`
+		}
+		oldColInfo := OldColumnInfo{}
+		err := json.Unmarshal(data, &oldColInfo)
+		if err != nil {
+			return errors.Trace(err)
+		}
+		c.OriginDefaultValue, err = interfaceToByteArr(oldColInfo.OriginDefaultValue)
+		if err != nil {
+			return errors.Trace(err)
+		}
+		c.DefaultValue, err = interfaceToByteArr(oldColInfo.DefaultValue)
+		if err != nil {
+			return errors.Trace(err)
+		}
+		c.ID = oldColInfo.ID
+		c.Name = oldColInfo.Name
+		c.Offset = oldColInfo.Offset
+		c.GeneratedExprString = oldColInfo.GeneratedExprString
+		c.GeneratedStored = oldColInfo.GeneratedStored
+		c.Dependences = oldColInfo.Dependences
+		c.FieldType = oldColInfo.FieldType
+		c.State = oldColInfo.State
+		c.Comment = oldColInfo.Comment
+		c.Version = CurrLatestColumnInfoVersion
+	} else {
+		type NewColumnInfo = ColumnInfo
+		colInfo := NewColumnInfo{}
+		err := json.Unmarshal(data, &colInfo)
+		if err != nil {
+			return errors.Trace(err)
+		}
+		*c = colInfo
+	}
+	return nil
+}
+
+func interfaceToByteArr(x interface{}) ([]byte, error) {
+	str, ok := x.(string)
+	if !ok {
+		return nil, errors.New("interface{} cannot convert to string")
+	}
+	return []byte(str), nil
+}
+
 // Clone clones ColumnInfo.
 func (c *ColumnInfo) Clone() *ColumnInfo {
 	nc := *c
