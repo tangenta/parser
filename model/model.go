@@ -112,12 +112,13 @@ func (c *ColumnInfo) UnmarshalJSON(data []byte) error {
 	if !ok {
 		return errors.Trace(errors.New("ColumnInfo does not contain version"))
 	}
-	columnInfoVersionNum, ok := vStrInt.(uint64)
+	vStrFloat, ok := vStrInt.(float64)
 	if !ok {
 		return errors.Trace(errors.New("ColumnInfo does not contain version"))
 	}
+	versionNum := uint64(vStrFloat)
 
-	if columnInfoVersionNum < ColumnInfoVersion3 {
+	if versionNum < ColumnInfoVersion3 {
 		type OldColumnInfo struct {
 			ID                  int64               `json:"id"`
 			Name                CIStr               `json:"name"`
@@ -154,7 +155,7 @@ func (c *ColumnInfo) UnmarshalJSON(data []byte) error {
 		c.FieldType = oldColInfo.FieldType
 		c.State = oldColInfo.State
 		c.Comment = oldColInfo.Comment
-		c.Version = CurrLatestColumnInfoVersion
+		c.Version = versionNum
 	} else {
 		type NewColumnInfo = ColumnInfo
 		colInfo := NewColumnInfo{}
