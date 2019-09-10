@@ -15,6 +15,7 @@ package model
 
 import (
 	"encoding/json"
+	datumType "github.com/pingcap/tidb/types"
 	"strconv"
 	"strings"
 	"time"
@@ -112,13 +113,9 @@ func (c *ColumnInfo) UnmarshalJSON(data []byte) error {
 	if !ok {
 		return errors.Trace(errors.New("ColumnInfo does not contain version"))
 	}
-	vStr, ok := vStrInt.(string)
+	columnInfoVersionNum, ok := vStrInt.(uint64)
 	if !ok {
 		return errors.Trace(errors.New("ColumnInfo does not contain version"))
-	}
-	columnInfoVersionNum, err := strconv.ParseUint(vStr, 10, 64)
-	if err != nil {
-		return errors.Trace(err)
 	}
 
 	if columnInfoVersionNum < ColumnInfoVersion3 {
@@ -172,11 +169,9 @@ func (c *ColumnInfo) UnmarshalJSON(data []byte) error {
 }
 
 func interfaceToByteArr(x interface{}) ([]byte, error) {
-	str, ok := x.(string)
-	if !ok {
-		return nil, errors.New("interface{} cannot convert to string")
-	}
-	return []byte(str), nil
+	datum := datumType.Datum{}
+	datum.SetValue(x)
+	return datum.ToBytes()
 }
 
 // Clone clones ColumnInfo.
