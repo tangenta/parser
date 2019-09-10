@@ -15,7 +15,6 @@ package model
 
 import (
 	"encoding/json"
-	datumType "github.com/pingcap/tidb/types"
 	"strconv"
 	"strings"
 	"time"
@@ -138,11 +137,11 @@ func (c *ColumnInfo) UnmarshalJSON(data []byte) error {
 		if err != nil {
 			return errors.Trace(err)
 		}
-		c.OriginDefaultValue, err = interfaceToByteArr(oldColInfo.OriginDefaultValue)
+		c.OriginDefaultValue, err = json.Marshal(oldColInfo.OriginDefaultValue)
 		if err != nil {
 			return errors.Trace(err)
 		}
-		c.DefaultValue, err = interfaceToByteArr(oldColInfo.DefaultValue)
+		c.DefaultValue, err = json.Marshal(oldColInfo.DefaultValue)
 		if err != nil {
 			return errors.Trace(err)
 		}
@@ -168,12 +167,6 @@ func (c *ColumnInfo) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func interfaceToByteArr(x interface{}) ([]byte, error) {
-	datum := datumType.Datum{}
-	datum.SetValue(x)
-	return datum.ToBytes()
-}
-
 // Clone clones ColumnInfo.
 func (c *ColumnInfo) Clone() *ColumnInfo {
 	nc := *c
@@ -192,15 +185,43 @@ func (c *ColumnInfo) SetDefaultValue(value string) error {
 }
 
 // GetDefaultValue gets the default value of the column.
-// Default value use to stored in DefaultValue field, but now,
-// bit type default value will store in DefaultValueBit for fix bit default value decode/encode bug.
 func (c *ColumnInfo) GetDefaultValue() string {
 	return string(c.DefaultValue)
+}
+
+// GetDefaultValueInterface convert the bytes in DefaultValue to interface{} with json.Unmarshal.
+func (c *ColumnInfo) GetDefaultValueInterface() (interface{}, error) {
+	var result interface{}
+	err := json.Unmarshal(c.DefaultValue, &result)
+	return result, err
 }
 
 // DefaultValueIsEmpty indicates true if there is a default value in ColumnInfo.
 func (c *ColumnInfo) DefaultValueIsEmpty() bool {
 	return c.DefaultValue == nil
+}
+
+// SetOriginDefaultValue sets the origin default value.
+func (c *ColumnInfo) SetOriginDefaultValue(value string) error {
+	c.OriginDefaultValue = []byte(value)
+	return nil
+}
+
+// GetOriginDefaultValue gets the origin default value of the column.
+func (c *ColumnInfo) GetOriginDefaultValue() string {
+	return string(c.OriginDefaultValue)
+}
+
+// GetOriginDefaultValueInterface convert the bytes in OriginDefaultValue to interface{} with json.Unmarshal.
+func (c *ColumnInfo) GetOriginDefaultValueInterface() (interface{}, error) {
+	var result interface{}
+	err := json.Unmarshal(c.OriginDefaultValue, &result)
+	return result, err
+}
+
+// OriginDefaultValueIsEmpty indicates true if there is a default value in OriginDefaultValue.
+func (c *ColumnInfo) OriginDefaultValueIsEmpty() bool {
+	return c.OriginDefaultValue == nil
 }
 
 // FindColumnInfo finds ColumnInfo in cols by name.
