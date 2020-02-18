@@ -2199,7 +2199,7 @@ type TableOptimizerHint struct {
 	// It allows only table name or alias (if table has an alias)
 	HintName model.CIStr
 	// HintData is the payload of the hint. The actual type of this field
-	// is defined differently as according `HintName`. Define as following:
+	// is defined differently as according `HintName. Define as following:
 	//
 	// Statement Execution Time Optimizer Hints
 	// See https://dev.mysql.com/doc/refman/5.7/en/optimizer-hints.html#optimizer-hints-execution-time
@@ -2209,14 +2209,14 @@ type TableOptimizerHint struct {
 	//
 	// Time Range is used to hint the time range of inspection tables
 	// e.g: select /*+ time_range('','') */ * from information_schema.inspection_result.
-	// - TIME_RANGE          => ast.HintTimeRange
-	// - READ_FROM_STORAGE   => model.CIStr
-	// - USE_TOJA            => bool
+	// - TIME_RANGE          => model.HintTimeRange
 	HintData interface{}
 	// QBName is the default effective query block of this hint.
-	QBName  model.CIStr
-	Tables  []HintTable
-	Indexes []model.CIStr
+	QBName    model.CIStr
+	Tables    []HintTable
+	Indexes   []model.CIStr
+	StoreType model.CIStr
+	HintFlag  bool
 }
 
 // HintTimeRange is the payload of `TIME_RANGE` hint
