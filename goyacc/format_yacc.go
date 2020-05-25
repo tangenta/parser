@@ -668,7 +668,7 @@ func (rules RuleArr) filterRelatedRules(ruleName string, blackListNames []string
 		for ri := curRule.RuleItemList; ri != nil; ri = ri.RuleItemList {
 			switch ruleItemType(ri.Case) {
 			case identRuleItemType, strLiteralRuleItemType:
-				if rs, ok := ruleMap[ri.Token.Val]; ok && !containsInBlackList(ri.Token.Val){
+				if rs, ok := ruleMap[ri.Token.Val]; ok && !containsInBlackList(ri.Token.Val) {
 					result = append(result, rs...)
 					delete(ruleMap, ri.Token.Val)
 				}
