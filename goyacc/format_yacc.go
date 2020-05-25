@@ -29,6 +29,30 @@ import (
 	"github.com/pingcap/parser/format"
 )
 
+func PrintBNF(inputFilename, bnfFilename, startRule, blackListRuleNames string) (err error) {
+	blackListRules := strings.Split(blackListRuleNames, ",")
+
+	spec, err := parseFileToSpec(inputFilename)
+	yFmt := &OutputFormatter{}
+	if err = yFmt.Setup(bnfFilename); err != nil {
+		return err
+	}
+	defer func() {
+		teardownErr := yFmt.Teardown()
+		if err == nil {
+			err = teardownErr
+		}
+	}()
+
+	rules := RuleArr(spec.Rules).filterRelatedRules(startRule, blackListRules)
+
+	err = printBNF(yFmt, rules)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func Format(inputFilename string, goldenFilename string) (err error) {
 	spec, err := parseFileToSpec(inputFilename)
 	if err != nil {
@@ -310,9 +334,9 @@ func containsActionInRule(rule *parser.Rule) bool {
 type RuleArr []*parser.Rule
 
 func printRules(f format.Formatter, rules RuleArr) (err error) {
-	var lastRuleName string
+	var prevRuleName string
 	for _, rule := range rules {
-		if rule.Name.Val == lastRuleName {
+		if rule.Name.Val == prevRuleName {
 			cmt := getTokenComment(rule.Token, divStringLayout)
 			_, err = f.Format("\n%s|\t%i", cmt)
 		} else {
@@ -322,7 +346,7 @@ func printRules(f format.Formatter, rules RuleArr) (err error) {
 		if err != nil {
 			return err
 		}
-		lastRuleName = rule.Name.Val
+		prevRuleName = rule.Name.Val
 
 		if err = printRuleBody(f, rule); err != nil {
 			return err
@@ -579,4 +603,77 @@ func checkInconsistencyInYaccParser(f format.Formatter, rule *parser.Rule, count
 		}
 	}
 	return nil
+}
+
+func printBNF(f format.Formatter, rules RuleArr) error {
+	var prevRuleName string
+	var err error
+	for _, rule := range rules {
+		if rule.Name.Val == prevRuleName {
+			_, err = f.Format("\n|\t%i")
+		} else {
+			_, err = f.Format("\n\n%s ::=%i\n", rule.Name.Val)
+		}
+		if err != nil {
+			return err
+		}
+		prevRuleName = rule.Name.Val
+
+		for ri := rule.RuleItemList; ri != nil; ri = ri.RuleItemList {
+			switch ruleItemType(ri.Case) {
+			case identRuleItemType, strLiteralRuleItemType:
+				term := fmt.Sprintf(" %s", ri.Token.Val)
+				if ri == rule.RuleItemList {
+					term = term[1:]
+				}
+
+				if _, err := f.Format("%s", term); err != nil {
+					return err
+				}
+			}
+		}
+		if _, err = f.Format("%u"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (rules RuleArr) filterRelatedRules(ruleName string, blackListNames []string) RuleArr {
+	ruleMap := map[string]RuleArr{}
+	for _, r := range rules {
+		ruleMap[r.Name.Val] = append(ruleMap[r.Name.Val], r)
+	}
+
+	var result RuleArr
+	if rs, ok := ruleMap[ruleName]; ok {
+		result = append(result, rs...)
+		delete(ruleMap, ruleName)
+	} else {
+		return nil
+	}
+
+	containsInBlackList := func(rule string) bool {
+		for _, n := range blackListNames {
+			if n == rule {
+				return true
+			}
+		}
+		return false
+	}
+
+	// breadth-first search in related rules.
+	for i := 0; i < len(result); i++ {
+		curRule := result[i]
+		for ri := curRule.RuleItemList; ri != nil; ri = ri.RuleItemList {
+			switch ruleItemType(ri.Case) {
+			case identRuleItemType, strLiteralRuleItemType:
+				if rs, ok := ruleMap[ri.Token.Val]; ok && !containsInBlackList(ri.Token.Val){
+					result = append(result, rs...)
+					delete(ruleMap, ri.Token.Val)
+				}
+			}
+		}
+	}
+	return result
 }

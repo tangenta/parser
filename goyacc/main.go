@@ -165,6 +165,9 @@ var (
 	oFormat     = flag.Bool("fmt", false, "format the yacc file")
 	oFormatOut  = flag.String("fmtout", "golden.y", "yacc formatter output")
 	oParserType = flag.String("t", "Parser", "name of the parser in the generated yyParse() function")
+	oBNFOut   = flag.String("bnf", "", "generate bnf format file for parser.y")
+	oBNFStartRule = flag.String("bnf_start", "Start", "the start rule for bnf file")
+	oBNFBlackList = flag.String("bnf_black_list", "", "the rules to hide, separate with `,`")
 )
 
 func main() {
@@ -191,6 +194,13 @@ func main() {
 		in = flag.Arg(0)
 	default:
 		log.Fatal("expected at most one non flag argument")
+	}
+
+	if len(*oBNFOut) != 0 {
+		if err := PrintBNF(in, *oBNFOut, *oBNFStartRule, *oBNFBlackList); err != nil {
+			log.Fatal(err)
+		}
+		return
 	}
 
 	if *oFormat {
