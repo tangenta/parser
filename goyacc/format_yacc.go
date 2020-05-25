@@ -610,9 +610,9 @@ func printBNF(f format.Formatter, rules RuleArr) error {
 	var err error
 	for _, rule := range rules {
 		if rule.Name.Val == prevRuleName {
-			_, err = f.Format("\n|\t%i")
+			_, err = f.Format("|\t%i")
 		} else {
-			_, err = f.Format("\n\n%s ::=%i\n", rule.Name.Val)
+			_, err = f.Format("\n%s ::=\n%i", rule.Name.Val)
 		}
 		if err != nil {
 			return err
@@ -632,7 +632,7 @@ func printBNF(f format.Formatter, rules RuleArr) error {
 				}
 			}
 		}
-		if _, err = f.Format("%u"); err != nil {
+		if _, err = f.Format("%u\n"); err != nil {
 			return err
 		}
 	}
