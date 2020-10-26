@@ -302,6 +302,7 @@ import (
 	backup                "BACKUP"
 	backups               "BACKUPS"
 	begin                 "BEGIN"
+	bernoulli             "BERNOULLI"
 	binding               "BINDING"
 	bindings              "BINDINGS"
 	binlog                "BINLOG"
@@ -471,6 +472,7 @@ import (
 	partitioning          "PARTITIONING"
 	partitions            "PARTITIONS"
 	password              "PASSWORD"
+	percents              "PERCENTS"
 	per_db                "PER_DB"
 	per_table             "PER_TABLE"
 	pipesAsOr
@@ -560,9 +562,11 @@ import (
 	super                 "SUPER"
 	swaps                 "SWAPS"
 	switchesSym           "SWITCHES"
+	system                "SYSTEM"
 	systemTime            "SYSTEM_TIME"
 	tableChecksum         "TABLE_CHECKSUM"
 	tables                "TABLES"
+	tableSample           "TABLESAMPLE"
 	tablespace            "TABLESPACE"
 	temporary             "TEMPORARY"
 	temptable             "TEMPTABLE"
@@ -1046,6 +1050,7 @@ import (
 	SelectStmtBasic                        "SELECT statement from constant value"
 	SelectStmtFromDualTable                "SELECT statement from dual table"
 	SelectStmtFromTable                    "SELECT statement from table"
+	SelectStmtFromTableSample              "SELECT statement from table sample"
 	SelectStmtGroup                        "SELECT statement optional GROUP BY clause"
 	SelectStmtIntoOption                   "SELECT statement into clause"
 	SequenceOption                         "Create sequence option"
@@ -1091,6 +1096,8 @@ import (
 	TableOptionList                        "create table option list"
 	TableRef                               "table reference"
 	TableRefs                              "table references"
+	TableSampleMethodOpt                   "table sample method optional"
+	TableSampleUnitOpt                     "table sample unit optional"
 	TableToTable                           "rename table to table"
 	TableToTableList                       "rename table to table by list"
 	TextStringList                         "text string list"
@@ -5397,6 +5404,10 @@ UnReservedKeyword:
 |	"REPLICAS"
 |	"POLICY"
 |	"WAIT"
+|	"TABLESAMPLE"
+|	"BERNOULLI"
+|	"SYSTEM"
+|	"PERCENTS"
 
 TiDBKeyword:
 	"ADMIN"
@@ -7280,6 +7291,59 @@ SelectStmtFromTable:
 		$$ = st
 	}
 
+SelectStmtFromTableSample:
+	SelectStmtBasic "FROM" TableRefsClause "TABLESAMPLE" TableSampleMethodOpt '(' intLit TableSampleUnitOpt ')' WhereClauseOptional
+	{
+		st := $1.(*ast.SelectStmt)
+		st.From = $3.(*ast.TableRefsClause)
+		lastField := st.Fields.Fields[len(st.Fields.Fields)-1]
+		if lastField.Expr != nil && lastField.AsName.O == "" {
+			lastEnd := parser.endOffset(&yyS[yypt-5])
+			lastField.SetText(parser.src[lastField.Offset:lastEnd])
+		}
+		var tableSample SampleClause
+		tableSample.SampleMethod = $5.(ast.SampleMethodSystemType)
+		tableSample.IntValue = $7.(int64)
+		tableSample.SampleClauseUnit = $8.(ast.SampleMethodSystemType)
+		if $10 != nil {
+			st.Where = $4.(ast.ExprNode)
+		}
+		st.tableSample = &tableSample
+		$$ = st
+	}
+
+TableSampleMethodOpt:
+	/* empty */ %prec empty
+	{
+		$$ = ast.SampleMethodSystemNone
+	}
+|	"SYSTEM"
+	{
+		$$ = ast.SampleMethodSystem
+	}
+|	"BERNOULLI"
+	{
+		$$ = ast.SampleMethodBernoulli
+	}
+|	"REGIONS"
+	{
+		$$ = ast.SampleMethodTiDBRegion
+	}
+
+TableSampleUnitOpt:
+	/* emtpy */ %prec empty
+	{
+		$$ = ast.SampleClauseUnitTypeDefault
+	}
+|	"ROWS"
+	{
+		$$ = ast.SampleClauseUnitTypeRow
+	}
+|	"PERCENTS"
+	{
+		$$ = ast.SampleClauseUnitTypePercent
+	}
+
 SelectStmt:
 	SelectStmtBasic OrderByOptional SelectStmtLimitOpt SelectLockOpt SelectStmtIntoOption
 	{
@@ -7349,6 +7413,14 @@ SelectStmt:
 		}
 		if $5 != nil {
 			st.SelectIntoOpt = $5.(*ast.SelectIntoOption)
+		}
+		$$ = st
+	}
+|	SelectStmtFromTableSample OrderByOptional
+	{
+		st := $1.(*ast.SelectStmt)
+		if $2 != nil {
+			st.OrderBy = $2.(*ast.OrderByClause)
 		}
 		$$ = st
 	}

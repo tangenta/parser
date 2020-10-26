@@ -775,6 +775,31 @@ func (n *OrderByClause) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+type SampleMethodType int8
+
+const (
+	SampleMethodSystemNone SampleMethodType = iota
+	SampleMethodSystem
+	SampleMethodBernoulli
+	SampleMethodTiDBRegion
+)
+
+type SampleClauseUnitType int8
+
+const (
+	SampleClauseUnitTypeDefault SampleClauseUnitType = iota
+	SampleClauseUnitTypeRow
+	SampleClauseUnitTypePercent
+)
+
+type SampleClause struct {
+	node
+	SampleMethod     SampleMethodType
+	IntValue         int64
+	SampleClauseUnit SampleClauseUnitType
+	RepeatableSeed   int64
+}
+
 type SelectStmtKind uint8
 
 const (
@@ -837,6 +862,8 @@ type SelectStmt struct {
 	Kind SelectStmtKind
 	// Lists is filled only when Kind == SelectStmtKindValues
 	Lists []*RowExpr
+	// TableSample is the table sample clause.
+	TableSample *SampleClause
 }
 
 // Restore implements Node interface.

@@ -660,6 +660,7 @@ var tokenMap = map[string]int{
 	"TABLE_CHECKSUM":           tableChecksum,
 	"TABLE":                    tableKwd,
 	"TABLES":                   tables,
+	"TABLESAMPLE":              tableSample,
 	"TABLESPACE":               tablespace,
 	"TELEMETRY":                telemetry,
 	"TELEMETRY_ID":             telemetryID,
