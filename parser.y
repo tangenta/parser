@@ -982,6 +982,7 @@ import (
 	GroupByClause                          "GROUP BY clause"
 	HavingClause                           "HAVING clause"
 	AsOfClause                             "AS OF clause"
+	AsOfClauseOpt                          "AS OF clause optional"
 	HandleRange                            "handle range"
 	HandleRangeList                        "handle range list"
 	IfExists                               "If Exists"
@@ -1346,6 +1347,7 @@ import (
 	TextString                      "text string item"
 
 %precedence empty
+%precedence as
 %precedence lowerThanSelectOpt
 %precedence sqlBufferResult
 %precedence sqlBigResult
@@ -5294,11 +5296,18 @@ HavingClause:
 		$$ = &ast.HavingClause{Expr: $2}
 	}
 
+AsOfClauseOpt:
+	%prec empty
+	{
+		$$ = nil
+	}
+|	AsOfClause
+
 AsOfClause:
 	"AS" "OF" Expression
 	{
 		$$ = &ast.AsOfClause{
-			Mode:   ast.TimestampReadBoundTimestamp,
+			Mode:   ast.TimestampBoundReadTimestamp,
 			TsExpr: $3.(ast.ExprNode),
 		}
 	}
@@ -5561,6 +5570,7 @@ UnReservedKeyword:
 |	"LAST"
 |	"NAMES"
 |	"NVARCHAR"
+|	"OF"
 |	"OFFSET"
 |	"PACK_KEYS"
 |	"PARSER"
@@ -7754,7 +7764,7 @@ SelectStmtFromDualTable:
 	}
 
 SelectStmtFromTable:
-	SelectStmtBasic "FROM" TableRefsClause AsOfClause WhereClauseOptional SelectStmtGroup HavingClause WindowClauseOptional
+	SelectStmtBasic "FROM" TableRefsClause AsOfClauseOpt WhereClauseOptional SelectStmtGroup HavingClause WindowClauseOptional
 	{
 		st := $1.(*ast.SelectStmt)
 		st.From = $3.(*ast.TableRefsClause)
@@ -7764,19 +7774,19 @@ SelectStmtFromTable:
 			lastField.SetText(parser.src[lastField.Offset:lastEnd])
 		}
 		if $4 != nil {
-			st.Where = $4.(ast.ExprNode)
+			st.AsOf = $4.(*ast.AsOfClause)
 		}
 		if $5 != nil {
-			st.GroupBy = $5.(*ast.GroupByClause)
+			st.Where = $5.(ast.ExprNode)
 		}
 		if $6 != nil {
-			st.Having = $6.(*ast.HavingClause)
+			st.GroupBy = $6.(*ast.GroupByClause)
 		}
 		if $7 != nil {
-			st.WindowSpecs = ($7.([]ast.WindowSpec))
+			st.Having = $7.(*ast.HavingClause)
 		}
 		if $8 != nil {
-			st.AsOf = $8.(*ast.AsOfClause)
+			st.WindowSpecs = ($8.([]ast.WindowSpec))
 		}
 		$$ = st
 	}
@@ -8346,6 +8356,7 @@ PartitionNameListOpt:
 	}
 
 TableAsNameOpt:
+	%prec empty
 	{
 		$$ = model.CIStr{}
 	}
